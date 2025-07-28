@@ -22,7 +22,7 @@ class Robot:
 	Armor = 2
 	immune = [poison]
 	resist = []
-	weak = []
+	weak = [energy]
 
 class Mutant:
 	description = "High HP and strength. Moderate speed and luck. Resists energy damage, but weak to poison."
@@ -35,7 +35,7 @@ class Mutant:
 	Armor = 0
 	immune = []
 	resist = [energy]
-	weak = [poison]	
+	weak = []	
 
 class Cyborg:
 	description = "High speed and intelligence. Resistant to poison. Light natural armor."

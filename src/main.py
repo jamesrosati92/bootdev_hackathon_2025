@@ -1,13 +1,20 @@
 from choose_character import create_character
 from enemy import Enemy
-from weapons import available_weapons
+from enemy import easy_enemies
+from weapons import available_weapons, additional_weapons, weapon_loot, get_weapon_accuracy
 from actions import Attack
 from credits import roll_credits
+from encounter import choose_enemies
+from encounter import run_combat
+from items import BodyArmor, Medicine, Grenade, armor_loot, medicine_loot, grenade_loot
+from experience_points import award_experience
+
+import random
 
 
 #Debugging
 
-DEBUG = True  # Set to False for normal play
+DEBUG = False  #Set to False for normal play
 
 if DEBUG:
 	# Create a default player and weapon for testing
@@ -15,74 +22,84 @@ if DEBUG:
 	from weapons import available_weapons
 
 	test_class = CharacterClass(
-		"robot", "Test robot", accuracy=5, strength=5, speed=5, intelligence=5, luck=5, HP=20, SP=1, armor=2
+		"mutant", "Test mutant", 8, 8, 8, 5, 20, 1, [], ["energy"], []
 	)
-	test_weapon = available_weapons[0]
-	player = PlayerCharacter("TestPlayer", test_class, test_weapon)
+	inventory =[available_weapons[0], available_weapons[2], available_weapons[4], medicine_loot[0], grenade_loot[0]]
+	player = PlayerCharacter("TestPlayer", test_class, inventory)
+
 else:
 	player = create_character()
 
-#Choose actions
-def choose_action(weapon, accuracy): #For now, there's only "attack"
-	attack_action = Attack("attack", accuracy)
-	#Instantiate attack_action as an object.
-
-	available_actions = [
-		attack_action, 
-		#Attack will use a d10 roll. The attack hits if the roll <= the stat. STR for melee, SPD for ranged
-	]
-	#I'll add more actions with more functionality later.
-	#Other actions will be things like "use item", "defend", "inspect", "swap weapon", "special ability"
-	
-	print("\nWhat will you do?")
-	for index, action in enumerate(available_actions, 1):
-		print(f"{index}. {action.name.capitalize()}")
-
-	while True:
-		choice = input("Enter the number of the action you'd like to take.\n") #This shows the prompt to the user and accepts their input.
-		if choice.isdigit() and 1 <= int(choice) <= len(available_actions):
-			selected_action = available_actions[int(choice) - 1]
-			print(f"You {selected_action.name}")
-			return selected_action
-		else:
-			print("Invalid choice. Please choose a number from the list.")
-
 def main():
-#Step 1: character creation and stats
-	
-	if DEBUG == False:
-		player = create_character()
-		weapon = player.inventory[0] #Player's chosen weapon.
-		inventory = player.inventory
-		accuracy = player.character_class.accuracy
-		#DEBUG skips character creation
 
-	enemy_weapon = available_weapons[1]
-	enemy = Enemy("mook", "fearsome", enemy_weapon, HP=5, accuracy=5) #I'll build proper enemies in their own encounter modules.
+#Step 1: Spawn level
+	player_base_armor = player.character_class.armor
+	level = 1
+	while player.character_class.current_HP > 0:
 
-	
-#Step 2: The enemy appears.
-	print(f"\nA {enemy.adjective} {enemy.name} appears!")
-
-#Step 3: combat turns	
-	while enemy.HP > 0:
-		action = choose_action(Attack, accuracy)
-		action.attack_roll(accuracy) 
-		#A matching function name across all actions might help. "execute_action" maybe.
+#Step 2: spawn level
 		
-		print(f"You attack the {enemy.name} with your {weapon.name} and deal {weapon.damage} damage!")
+		enemies = choose_enemies(level)
+		print(f"\nLevel {level}")
 
-		enemy.take_damage(weapon.damage)
-		enemy_action = choose_action(Attack, enemy.accuracy)
-		action.attack_roll(action) #Enemy takes a turn after the player.
-		print(f"The {enemy.name} attacks you with its {enemy_weapon.name} for {enemy_weapon.damage} damage!")
+#Step 3: combat turns
+		run_combat(player, enemies, level)
+		input("Press Enter to continue....")
 
-	#if player.HP <= 0:
-		#print("You have died.")
-		#print("Game over!")
-		#exit()
+#Step 4: Level rewards
+		loot = []
+		if level == 1:
+			loot = [medicine_loot[0],
+				medicine_loot[0],
+				random.choice(available_weapons)
+			]
+			
+		else:
+			loot = [random.choice(medicine_loot),
+			random.choice(medicine_loot),
+			random.choice(armor_loot),
+			random.choice(grenade_loot),
+			random.choice(weapon_loot),
+			]
+		print("Searching for loot, you found:")
+		for item in loot:		#Here, item means loot item.
+			print(f"{item.name}\n")
+		player.inventory += loot
+		player.character_class.armor = player_base_armor
+		unique_armor_names = set()
+		for item in player.inventory:	#Here, item means inventory item.
+			if isinstance(item, BodyArmor) and item.name not in unique_armor_names:
+				player.character_class.armor += item.armor_bonus
+				unique_armor_names.add(item.name)
 
-#Step 4: credits
+		input("Press Enter to continue....")
+
+		for stat in player.character_profile:
+			print(stat)
+		award_experience(player, level)
+
+		level += 1
+		input("Press Enter to continue....")
+
+#The Boss
+	if level == 10:
+		from enemy_mechastoob import mecha_stoob_weapons, stoob_weapon, mecha_stoob
+		print("The ground shudders and shakes from mighty footfalls.")
+		input("Press Enter to continue....")
+		print("Before you, standing as tall as something much bigger than you expected,")
+		input("Press Enter to continue....")
+		print("It's the terrifying, horrifying, stupefying:")
+		input("Press Enter to continue....")
+		print("Mecha Stoob!!")
+		print("The evil step-cousin of the regular second cousin of boot.dev's very own Boots!")
+		input("Press Enter to continue...")
+		print("The cyber bear is out for your blood! Good luck to you....")
+		run_combat(player, mecha_stoob, level=10)
+		print("Congratulations! You have defeated the One and Only Mecha Stoob!")
+		print("You win!")
+		input("Press Enter to continue....")
+
+#Credits
 	roll_credits(player)
 		
 

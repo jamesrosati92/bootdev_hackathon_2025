@@ -2,57 +2,78 @@ from weapons import available_weapons #The player character always starts with a
 
 class CharacterClass:				#The classes are human, robot, mutant and cyborg.
 	def __init__(
-		self, name, description, accuracy, strength, speed, intelligence, luck, HP, SP, armor #SP = special points
+		self, name, description, strength, speed, intelligence, luck, max_HP, armor, immune, resist, weak
 		):
-							#Accuracy is currently generic across all weapon types.
+		#Accuracy is currently generic across all weapon types.
 		self.name = name
 		self.description = description
-		self.accuracy = accuracy
 		self.strength = strength
 		self.speed = speed
 		self.intelligence = intelligence
 		self.luck = luck
-		self.HP = HP
-		self.SP = SP
-		self.armor = armor
+		self.max_HP = max_HP				#HP cap for healing
+		self.current_HP = max_HP			#Takes damage
+		self.armor = armor #Each point of armor reduces damage from dam_type "normal" by 1.
+		self.immune = immune
+		self.resist = resist
+		self.weak = weak
 		
 
 	def __str__(self):
 		return f"{self.name.capitalize()}: {self.description}"
 
 class PlayerCharacter:
-	def __init__(self, name, character_class, weapon):
+	def __init__(self, name, character_class, inventory):
 		self.name = name
 		self.character_class = character_class
-		self.inventory = [weapon] #The inventory starts with the player's chosen weapon.
+		self.inventory = inventory #The inventory starts with the player's chosen weapon.
+		self.character_profile = {
+			"Name": self.name,
+			"Class": self.character_class,
+			"Description": self.character_class.description,
+			"Strength": self.character_class.strength,
+			"Speed": self.character_class.speed,
+			"Intelligence": self.character_class.intelligence,
+			"Luck": self.character_class.luck,
+			"HP": f"{self.character_class.current_HP}/{self.character_class.max_HP}",
+			"Armor": self.character_class.armor,
+			"Immunities": self.character_class.immune,
+			"Resistances": self.character_class.resist,
+			"Weaknesses": self.character_class.weak,
+		}
 	
 	def __str__(self):
 		return f"You are {self.name}, the {self.character_class.name}."
 
-	def take_damage(self, damage, dam_type=None):
+	def take_damage(self, damage, dam_type):
 		if dam_type in self.character_class.immune:
 			damage = 0
 			print(f"You are immune to {dam_type} damage and are not hurt by the attack!")
 		elif dam_type in self.character_class.resist:
 			damage //= 2
-			self.HP -= damage
+
 		elif dam_type in self.character_class.weak:
 			damage *= 2
-			self.HP - damage
 		else:
-			self.HP -= damage
+			damage -= self.character_class.armor
+			if self.character_class.armor > 0:
+				print("Your armor protects you from some of the damage!")
+		self.character_class.current_HP -= damage
 		print(f"You take {damage} damage!")
 
 
 available_classes = [
 	CharacterClass(
-		"human", "Well-rounded and lucky", accuracy=6, strength=6, speed=6, intelligence=6, luck=6, HP=20, SP=3, armor=0
+		"human", "Well-rounded and lucky", 6, 6, 6, 6, 20, 0, [], [], []
 	),
-	CharacterClass("robot", "Armored and immune to poison", accuracy=5, strength=7, speed=6, intelligence=4, luck=1, HP=25, SP=1, armor=2
+	CharacterClass(
+		"robot", "Armored and immune to poison", 7, 6, 4, 1, 25, 2, ["poison"], [], ["energy"]
 	),
-	CharacterClass("mutant", "Hardy and strong", accuracy=6, strength=8, speed=4, intelligence=5, luck=3, HP=30, SP=2, armor=0
+	CharacterClass(
+		"mutant", "Hardy and strong, resists energy damage but weak to poison.", 8, 4, 5, 3, 30, 0, [], ["energy"], ["poison"]
 	),
-	CharacterClass("cyborg", "Fast and intelligent, with light armor and resistance to poison", accuracy=7, strength=5, speed=7, intelligence=7, luck=2, HP=20, SP=4, armor=1
+	CharacterClass(
+		"cyborg", "Fast and intelligent, with light armor and resistance to poison", 5, 7, 7, 2, 20, 1, [], ["poison"], []
 	),
 ]
 
@@ -82,6 +103,7 @@ def choose_weapon():
 			selected_weapon = available_weapons[int(choice) - 1]
 			print(f"You chose: {selected_weapon.name.capitalize()}")
 			return selected_weapon
+			
 		else:
 			print("Invalid choice. Please enter a number from the list.")
 
@@ -92,8 +114,8 @@ def create_character():
 		raise Exception("Name must be 20 letters or less.")
 	else:
 		character_class = choose_class()
-		weapon = choose_weapon()
-		player = PlayerCharacter(name, character_class, weapon)
+		inventory = [choose_weapon()]
+		player = PlayerCharacter(name, character_class, inventory)
 		print(player)
 		return player
 
